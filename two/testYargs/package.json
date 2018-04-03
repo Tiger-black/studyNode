@@ -1,0 +1,20 @@
+{
+  "name": "testYargs",
+  "version": "1.0.0",
+  "description": "使用yargs命令行框架",
+  "main": "index.js",
+  "repository": {
+    "private": true
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "testYargs": "./bin/testYargs.js"
+  },
+  "author": "xiaohu.li",
+  "license": "ISC",
+  "dependencies": {
+    "yargs": "^11.0.0"
+  }
+}

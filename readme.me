@@ -1,0 +1,295 @@
+什么是NodeJS
+
+JS是脚本语言，脚本语言都需要一个解析器才能运行。对于写在HTML页面里的JS，浏览器充当了解析器的角色。
+而对于需要独立运行的JS，NodeJS就是一个解析器。
+每一种解析器都是一个运行环境，不但允许JS定义各种数据结构，进行各种计算，还允许JS使用运行环境提供的内置对象和方法做一些事情。
+例如运行在浏览器中的JS的用途是操作DOM，浏览器就提供了document之类的内置对象。
+而运行在NodeJS中的JS的用途是操作磁盘文件或搭建HTTP服务器，NodeJS就相应提供了fs、http等内置对象。
+
+总结 
+ 1、NodeJS是一个JS脚本解析器，任何操作系统下安装NodeJS本质上做的事情都是把NodeJS执行程序复制到一个目录，
+ 然后保证这个目录在系统PATH环境变量下，以便终端下可以使用node命令。
+ 2、终端下直接输入node命令可进入命令交互模式，很适合用来测试一些JS代码片段，比如正则表达式。
+ 3、NodeJS使用CMD模块系统，主模块作为程序入口点，所有模块在执行过程中只初始化一次。
+ 4、除非JS模块不能满足需求，否则不要轻易使用二进制模块，否则你的用户会叫苦连天。
+
+
+    /usr/local/bin/node  node的路径
+
+
+一、原生开发命令工具
+    模块路径解析规则
+    require函数支持斜杠（/）或盘符（C:）开头的绝对路径，也支持./开头的相对路径。
+    但这两种路径在模块之间建立了强耦合关系，一旦某个模块文件的存放位置需要变更，使用该模块的其它模块的代码也需要跟着调整，变得牵一发动全身。
+    因此，require函数支持第三种形式的路径，写法类似于foo/bar，并依次按照以下规则解析路径，直到找到模块位置。
+    1、内置模块
+        如果传递给require函数的是NodeJS内置模块名称，不做路径解析，直接返回内部模块的导出对象，例如require('fs')。
+
+    2、node_modules目录 
+        NodeJS定义了一个特殊的node_modules目录用于存放模块。例如某个模块的绝对路径是/home/user/hello.js，
+        在该模块中使用require('foo/bar')方式加载模块时，则NodeJS依次尝试使用以下路径。
+        /home/user/node_modules/foo/bar
+        /home/node_modules/foo/bar
+        /node_modules/foo/bar
+
+    3、NODE_PATH环境变量
+        与PATH环境变量类似，NodeJS允许通过NODE_PATH环境变量来指定额外的模块搜索路径。
+        NODE_PATH环境变量中包含一到多个目录路径，路径之间在Linux下使用:分隔，在Windows下使用;分隔。
+        例如定义了以下NODE_PATH环境变量： NODE_PATH=/home/user/lib:/home/lib
+        当使用require('foo/bar')的方式加载模块时，则NodeJS依次尝试以下路径。/home/user/lib/foo/bar 或者 /home/lib/foo/bar
+    
+    4、编写一个命令行工具 例子 two/xiaohusay
+        （1）首先，使用 JavaScript 语言，写一个可执行脚本，可以通过#!注释来指定当前脚本使用的解析器 顶部加一行代码 #!/usr/bin/env node NodeJS会忽略掉位于JS模块首行的#!注释，不必担心这行注释是非法语句。
+        （2）然后，我们使用以下命令赋予node-echo.js文件执行权限。 $ chmod +x /home/user/bin/node-echo.js 或者 $ chmod 755 hello
+        （3）最后，我们在PATH环境变量中指定的某个目录下，例如在/usr/local/bin下边创建一个软链文件，文件名与我们希望使用的终端命令同名，命令如下：
+        $ sudo ln -s /home/user/bin/node-echo.js /usr/local/bin/node-echo
+        这样处理后，我们就可以在任何目录下使用node-echo命令了。
+        另一种更好的做法，是在当前目录下新建 package.json ，写入下面的内容。
+            {
+                "name": "hello",
+                "bin": {
+                    "hello": "hello"
+                }
+            }  然后执行 npm link 命令。
+    
+    如果你已经 npm link 搞了一遍你再 link 一遍，会报如下错误。即使你 npm unlink 也会报错
+    让你删除 /usr/local/bin/wcj 再 npm link ， 删除此目录运行 rm -rf /usr/local/bin/wcj
+
+二、依赖 nodejs 原生开发命令工具比较麻烦，可以使用命令行框架帮助我们简化命令行开发。
+    1、Commander 是一款重量轻，表现力强大的命令行框架。提供了用户命令行输入和参数解析强大功能。
+        Commander 源自一个同名的Ruby项目。Commander.js 是 TJ 写的一个帮助快速开发Nodejs命令行工具的package。
+        TJ这货是Nodejs社区里非常知名的高产作者。方便的定义option(包括option的描述和其回调函数)和子命令。
+
+    2、shelljs 模块重新包装了 child_process，调用系统命令更加方便。它需要安装后使用。
+        npm install --save shelljs
+        然后，改写脚本。
+        #!/usr/bin/env node
+        var name = process.argv[2];
+        var shell = require("shelljs");
+        shell.exec("echo hello " + name);
+        上面代码是 shelljs 的本地模式，即通过 exec 方法执行 shell 命令。此外还有全局模式，允许直接在脚本中写 shell 命令。
+        require('shelljs/global');
+        if (!which('git')) {
+            echo('Sorry, this script requires git');
+            exit(1);
+        }
+        mkdir('-p', 'out/Release');
+        cp('-R', 'stuff/*', 'out/Release');
+        cd('lib');
+        ls('*.js').forEach(function(file) {
+            sed('-i', 'BUILD_VERSION', 'v0.1.2', file);
+            sed('-i', /.*REMOVE_THIS_LINE.*\n/, '', file);
+            sed('-i', /.*REPLACE_LINE_WITH_MACRO.*\n/, cat('macro.js'), file);
+        });
+        cd('..');
+        if (exec('git commit -am "Auto-commit"').code !== 0) {
+            echo('Error: Git commit failed');
+            exit(1);
+        }
+
+    3、 yargs 模块 
+        shelljs 只解决了如何调用 shell 命令，而 yargs 模块能够解决如何处理命令行参数。它也需要安装。
+        $ npm install --save yargs
+        yargs 模块提供 argv 对象，用来读取命令行参数。请看改写后的 hello 。
+        #!/usr/bin/env node
+        var argv = require('yargs').argv;
+        console.log('hello ', argv.name);
+
+        process.argv 的原始返回值如下。
+        $ node hello --name=tom
+        [ 'node','/path/to/myscript.js','--name=tom' ]
+        yargs 可以上面的结果改为一个对象，每个参数项就是一个键值对。
+        $ node hello --name=tom
+        argv = {name: tom};
+        如果将 argv.name 改成 argv.n，就可以使用一个字母的短参数形式了。可以使用 alias 方法，指定 name 是 n 的别名。
+        #!/usr/bin/env node
+        var argv = require('yargs')
+            .alias('n', 'name')
+            .argv;
+        console.log('hello ', argv.n);这样一来，短参数和长参数就都可以使用了。
+
+        argv 对象有一个下划线（_）属性，可以获取非连词线开头的参数。 跟在 -X 后面的第一个参数不匹配 例如 -n a b c  下划线只匹配bc
+        console.log(argv._);
+        
+        命令行参数的配置
+        yargs 模块还提供3个方法，用来配置命令行参数。
+        demand：是否必选
+        default：默认值
+        describe：提示
+        #!/usr/bin/env node
+        var argv = require('yargs')
+            .demand(['n'])
+            .default({n: 'tom'})
+            .describe({n: 'your name'})
+            .argv;
+        console.log('hello ', argv.n);
+
+        options 方法允许将所有这些配置写进一个对象。
+        var argv = require('yargs')
+        .option('n', {
+            alias : 'name',
+            demand: true,
+            default: 'tom',
+            describe: 'your name',
+            type: 'string'
+        })
+        .argv;
+        有时，某些参数不需要值，只起到一个开关作用，这时可以用 boolean 方法指定这些参数返回布尔值
+        var argv = require('yargs')
+            .boolean(['n'])
+            .argv;
+        boolean 方法也可以作为属性，写入 option 对象。
+        .option('n', {
+            boolean: true
+        })
+
+        yargs 模块提供以下方法，生成帮助信息。
+        usage：用法格式
+        example：提供例子
+        help：显示帮助信息
+        epilog：出现在帮助信息的结尾
+
+
+
+        子命令 
+            yargs 模块还允许通过 command 方法，设置 Git 风格的子命令。
+            #!/usr/bin/env node
+            var argv = require('yargs')
+                .command("morning", "good morning", function (yargs) {
+                    console.log("Good Morning");
+                })
+                .command("evening", "good evening", function (yargs) {
+                    console.log("Good Evening");
+                })
+                .argv;
+
+            console.log('hello ', argv.n);
+
+            可以将这个功能与 shellojs 模块结合起来。
+            #!/usr/bin/env node
+            require('shelljs/global');
+            var argv = require('yargs')
+                .command("morning", "good morning", function (yargs) {
+                    echo("Good Morning");
+                })
+                .command("evening", "good evening", function (yargs) {
+                    echo("Good Evening");
+                })
+                .argv;
+
+            console.log('hello ', argv.n);
+
+        每个子命令往往有自己的参数，这时就需要在回调函数中单独指定。回调函数中，要先用 reset 方法重置 yargs 对象。
+
+        #!/usr/bin/env node
+            require('shelljs/global');
+            var argv = require('yargs')
+                .command("morning", "good morning", function (yargs) {  
+                    echo("Good Morning");
+                    var argv = yargs.reset()
+                    .option("m", {
+                        alias: "message",
+                        description: "provide any sentence"
+                    })
+                    .help("h")
+                    .alias("h", "help")
+                    .argv;
+
+                    echo(argv.m);
+                })
+                .argv;
+
+    4、其他事项
+        （1）返回值
+            根据 Unix 传统，程序执行成功返回 0，否则返回 1 。
+            if (err) {
+                process.exit(1);
+            } else {
+                process.exit(0);
+            }
+
+        （2）重定向
+            Unix 允许程序之间使用管道重定向数据。
+            $ ps aux | grep 'node'
+            脚本可以通过监听标准输入的data 事件，获取重定向的数据。
+            process.stdin.resume();
+            process.stdin.setEncoding('utf8');
+            process.stdin.on('data', function(data) {
+                process.stdout.write(data);
+            });
+            下面是用法。
+            $ echo 'foo' | ./hello
+            hello foo
+        （3）系统信号
+        操作系统可以向执行中的进程发送信号，process 对象能够监听信号事件。
+        process.on('SIGINT', function () {
+            console.log('Got a SIGINT');
+            process.exit(0);
+        });
+
+        发送信号的方法如下。
+        $ kill -s SIGINT [process_id]
+
+     注意 
+        1、命名不要太随意,避免重复
+        2、有的时候cnpm 装的包不完整，需要执行npm
+        3、没有仓库会报错 可以设置"repository": {"private": true},
+        4、创建js的时候一定要先给与js文件设置权限
+        5、妈的 这句一定要写对 #!/usr/bin/env node ！！！！！！！！ 不能有空格 找了一天问题
+三、文件操作
+    让前端觉得如获神器的不是NodeJS能做网络编程，而是NodeJS能够操作文件。
+    小至文件查找，大至代码编译，几乎没有一个前端工具不操作文件。
+    换个角度讲，几乎也只需要一些数据处理逻辑，再加上一些文件操作，就能够编写出大多数前端工具。本章将介绍与之相关的NodeJS内置模块。
+    开门红
+
+    1、NodeJS提供了基本的文件操作API，但是像文件拷贝这种高级功能就没有提供，因此我们先拿文件拷贝程序练手。
+    与copy命令类似，我们的程序需要能接受源文件路径与目标文件路径两个参数。
+        小文件拷贝
+        我们使用NodeJS内置的fs模块简单实现这个程序如下。
+        var fs = require('fs');
+        function copy(src, dst) {
+            fs.writeFileSync(dst, fs.readFileSync(src));
+        }
+        function main(argv) {
+            copy(argv[0], argv[1]);
+        }
+        main(process.argv.slice(2));
+        以上程序使用fs.readFileSync 从源路径读取文件内容，并使用fs.writeFileSync 将文件内容写入目标路径。
+        
+        readFileSync 同步版的fs.writeFile()  fs.writeFileSync(filename, data, [options])
+        接收参数：
+            filename      (String)            文件名称
+            data        (String | Buffer)    将要写入的内容，可以使字符串 或 buffer数据。
+            options        (Object)           option数组对象，包含：
+            · encoding   (string)            可选值，默认 ‘utf8′，当data使buffer时，该值应该为 ignored。
+            · mode         (Number)        文件读写权限，默认值 438
+            · flag            (String)            默认值 ‘w'
+        实现源码 fs.writeFileSync = function(path, data, options) {
+            if (!options) {
+                options = { encoding: 'utf8', mode: 438 /*=0666*/, flag: 'w' };
+            } else if (util.isString(options)) {
+                options = { encoding: options, mode: 438, flag: 'w' };
+            } else if (!util.isObject(options)) {
+                throw new TypeError('Bad arguments');
+            }
+            assertEncoding(options.encoding);
+            var flag = options.flag || 'w';
+            var fd = fs.openSync(path, flag, options.mode);
+            if (!util.isBuffer(data)) {
+                data = new Buffer('' + data, options.encoding || 'utf8');
+            }
+            var written = 0;
+            var length = data.length;
+            var position = /a/.test(flag) ? null : 0;
+            try {
+                while (written < length) {
+                written += fs.writeSync(fd, data, written, length - written, position);
+                position += written;
+                }
+            } finally {
+                fs.closeSync(fd);
+            }
+        };
+    process是一个全局变量，可通过process.argv获得命令行参数。
+    由于argv[0]固定等于NodeJS执行程序的绝对路径，argv[1]固定等于主模块的绝对路径，(mode路径，当前主模块绝对路径)
+    因此第一个命令行参数从argv[2]这个位置开始
