@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>openvue</title>
+  </head>
+  <style type="text/css">
+  	.statc{
+  		width: 100%;
+  		text-align: center;
+  		color: #448899;
+  	}
+  	.isFinished{
+  		background-color: #00f9ff;
+  	}
+  </style>
+  <body>
+    <div id="app"></div>
+    <div id="main">
+    	<p v-text="tit"></p>
+    	<p v-html="newItem"></p>
+    	<input type="text" name="" v-model="newItem" @keyup.enter="addNew">
+    	<ul>
+    		<li v-for="item in items" :class="{isFinished : item.isFinished}" v-text="item.lable" v-on:click="toggleFinished(item)">
+    		</li>
+    	</ul>
+    </div>
+    <!-- built files will be auto injected -->
+    <div class="statc">让我们一起摇摆</div>
+  </body>
+  <script type="text/javascript">
+  	
+  </script>
+</html>
