@@ -2,5 +2,9 @@
 node_modules/
 npm-debug.log
 .DS_Store
+
+build.json
+build/
+src/**/**/*.css
 /**/node_modules/
 
