@@ -63,6 +63,14 @@
             console.log(buf2.toString()) 
 
     3、fs文件模块
+        fs模块是一个很重要的模块，也支持非常多的属性和方法，可以直接在nodejs中查看，fs模块支持的属性，创建一个app.js文件，输入以下代码，运行即可。
+        var fs = require("fs"), i; 
+        for(i in fs){ 
+            console.log(i); 
+        } 
+        底层 open和openSync方法
+        对于文件操作，最基本的莫过于打开文件，你想要读写文件，那么就必须要打开文件才能读写，就像你要往冰箱放东西或者从冰箱拿东西，那么你首先要打开冰箱才行。
+
         （1）文件读取
             同步读取 fs.readFileSync(path,options)
             异步读取 fs.readFile(path,options,callback)

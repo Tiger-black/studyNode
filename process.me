@@ -1,0 +1,369 @@
+一、process对象
+    process对象用于处理与当前进程相关的事情，它是一个全局对象，可以在任何地方直接访问到它而无需引入额外模块。 它是 EventEmitter 的一个实例。
+    事件'exit'
+        当进程将要退出时触发。这是一个在固定时间检查模块状态（如单元测试）的好时机。需要注意的是 'exit' 的回调结束后，主事件循环将不再运行，所以计时器也会失效：
+        process.on('exit', function() {
+            // 设置一个延迟执行
+            setTimeout(function() {
+                console.log('主事件循环已停止，所以不会执行');
+            }, 0);
+            console.log('退出前执行');
+        });
+        setTimeout(function() {
+            console.log('1');
+        }, 500);
+
+    事件'uncaughtException'
+        捕获那些咱没有 try catch 的异常错误：
+            process.on('uncaughtException', function() {
+                console.log('捕获到一个异常');
+            });
+            var a = '123';
+            a.a(); //触发异常事件
+            console.log('这句话扑街了，不会显示出来');
+        但常规不建议使用该粗略的异常捕获处理，建议使用 domains
+
+    事件'SIGINT'
+        捕获当前进程接收到的信号（如按下了 ctrl + c）：
+
+        process.on('SIGINT', function() {
+            console.log('收到 SIGINT 信号。');
+        });
+        console.log('试着按下 ctrl + C');
+        setTimeout(function() {
+            console.log('end');
+        }, 50000);
+
+    process.stdout
+        一个指向标准输出流(stdout)的 可写的流(Writable Stream)：
+        process.stdout.write('这是一行数据\n这是第二行数据');
+        另可使用 process.stdout.isTTY 来判断当前是否处于TTY上下文。
+
+    process.stderr
+        一个指向标准错误流(stderr)的 可写的流(Writable Stream):
+        process.stderr.write('输出一行标准错误流，效果跟stdout没差');
+
+    process.stdin
+        一个指向 标准输入流(stdin) 的可读流(Readable Stream)。
+        标准输入流默认是暂停 (pause) 的，所以必须要调用 process.stdin.resume() 来恢复 (resume) 接收:
+            process.stdin.on('end', function() {
+                process.stdout.write('end');
+            });
+            function gets(cb){
+                process.stdin.setEncoding('utf8');
+                //输入进入流模式（flowing-mode，默认关闭，需用resume开启），注意开启后将无法read到数据
+                //见 https://github.com/nodejs/node-v0.x-archive/issues/5813
+                process.stdin.resume();
+                process.stdin.on('data', function(chunk) {
+                    console.log('start!');
+                    //去掉下一行可一直监听输入，即保持标准输入流为开启模式
+                    process.stdin.pause();
+                    cb(chunk);
+                });
+                console.log('试着在键盘敲几个字然后按回车吧');
+            }
+
+            gets(function(reuslt){
+                console.log("["+reuslt+"]");
+                //process.stdin.emit('end'); //触发end事件
+            });
+
+    process.argv
+        返回当前命令行指令参数 ，但不包括node特殊(node-specific) 的命令行选项（参数）。
+        常规第一个元素会是 'node'， 第二个元素将是 .Js 文件的名称。接下来的元素依次是命令行传入的参数：
+            //试着执行 $node --harmony argv.js a b
+            console.log(process.argv); //[ 'node', 'E:\\github\\nodeAPI\\process\\argv.js', 'a', 'b' ]
+            process.argv.forEach(function(val, index, array) {
+                console.log(index + ': ' + val);
+            });
+    
+    process.execArgv
+        与 process.argv 类似，不过是用于返回 node特殊(node-specific) 的命令行选项（参数）。另外所有文件名之后的参数都会被忽视：
+
+        //试着执行 $node --harmony execArgv a b --version
+        console.log(process.execArgv); //[ '--harmony' ]
+        process.execArgv.forEach(function(val, index, array) {
+            console.log(index + ': ' + val);
+        });
+    
+    process.abort()
+        触发node的abort事件，退出当前进程：
+        process.abort();
+        console.log('在输出这句话之前就退出了')
+
+    process.execPath
+        获取当前进程的这个可执行文件的绝对路径：
+        console.log(process.execPath); //C:\Program Files\nodejs\node.exe
+
+    process.cwd
+        返回当前进程的工作目录：
+        console.log('当前目录：' + process.cwd()); //当前目录：E:\github\nodeAPI\process
+        
+    process.chdir(directory)
+        改变进程的当前进程的工作目录（该目录必须已存在），若操作失败则抛出异常：
+        var path = require('path');
+
+        console.log('当前目录：' + process.cwd()); //当前目录：E:\github\nodeAPI\process
+        try {
+            process.chdir(path.resolve('.','tmp'));
+            console.log('新目录：' + process.cwd()); //新目录：E:\github\nodeAPI\process\tmp
+        }
+        catch (err) {
+            console.log('chdir: ' + err);
+        }
+    
+    process.env
+        获取当前系统环境信息的对象，常规可以用来进一步获取环境变量、用户名等系统信息：
+        console.log(process.env);
+        console.log('username: ' + process.env.USERNAME);
+        console.log('PATH: ' + process.env.PATH);
+
+    process.exit([code])
+        终止当前进程并返回给定的 code。如果省略了 code，退出是会默认返回成功的状态码('success' code) 也就是 0：
+        process.exit(1); //node的shell将捕获到值为1的返回码
+
+        更多的返回状态码可参考下方列表：
+        1 未捕获的致命异常(Uncaught Fatal Exception) - There was an uncaught exception, and it was not handled by a domain or an uncaughtException event handler.
+        2 - 未使用(Unused) (reserved by Bash for builtin misuse)
+        3 解析错误(Internal JavaScript Parse Error) - The JavaScript source code internal in Node's bootstrapping process caused a parse error. This is extremely rare, and generally can only happen during development of Node itself.
+        4 评估失败(Internal JavaScript Evaluation Failure) - The JavaScript source code internal in Node's bootstrapping process failed to return a function value when evaluated. This is extremely rare, and generally can only happen during development of Node itself.
+        5 致命错误(Fatal Error) - There was a fatal unrecoverable error in V8. Typically a message will be printed to stderr with the prefix FATAL ERROR.
+        6 未正确的异常处理(Non-function Internal Exception Handler) - There was an uncaught exception, but the internal fatal exception handler function was somehow set to a non-function, and could not be called.
+        7 异常处理函数运行时失败(Internal Exception Handler Run-Time Failure) - There was an uncaught exception, and the internal fatal exception handler function itself threw an error while attempting to handle it. This can happen, for example, if a process.on('uncaughtException') or domain.on('error') handler throws an error.
+        8 - 未使用(Unused). In previous versions of Node, exit code 8 sometimes indicated an uncaught exception.
+        9 - 无效的参数(Invalid Argument) - Either an unknown option was specified, or an option requiring a value was provided without a value.
+        10 运行时失败(Internal JavaScript Run-Time Failure) - The JavaScript source code internal in Node's bootstrapping process threw an error when the bootstrapping function was called. This is extremely rare, and generally can only happen during development of Node itself.
+        12 无效的调试参数(Invalid Debug Argument) - The --debug and/or --debug-brk options were set, but an invalid port number was chosen.
+        >128 信号退出(Signal Exits) - If Node receives a fatal signal such as SIGKILL or SIGHUP, then its exit code will be 128 plus the value of the signal code. This is a standard Unix practice, since exit codes are defined to be 7-bit integers, and signal exits set the high-order bit, and then contain the value of the signal code.
+
+
+    process.exitCode
+        可以自定义退出进程时node shell捕获到的状态码（必须是正常结束进程或者使用process.exit()指令退出）
+        process.exitCode = 4;
+        process.exit();
+        如果指名了 process.exit(code) 中退出的错误码 (code)，则会覆盖掉 process.exitCode 的设置。
+
+
+    process.version
+        一个暴露编译时存储版本信息的内置变量 NODE_VERSION 的属性:
+        console.log('版本: ' + process.version); //版本: v0.12.7
+
+    process.versions
+        一个暴露存储 node 以及其依赖包 版本信息的属性：
+        复制代码
+        console.log(process.versions);
+        //{ http_parser: '2.3',
+        //    node: '0.12.7',
+        //    v8: '3.28.71.19',
+        //    uv: '1.6.1',
+        //    zlib: '1.2.8',
+        //    modules: '14',
+        //    openssl: '1.0.1p' }
+
+    process.config
+        一个包含用来编译当前 node.exe 的配置选项的对象:
+        console.log(process.config);
+            //{ target_defaults:
+            //{ cflags: [],
+            //    default_configuration: 'Release',
+            //    defines: [],
+            //    include_dirs: [],
+            //    libraries: [] },
+            //    variables:
+            //    { clang: 0,
+            //        host_arch: 'x64',
+            //        icu_data_file: 'icudt54l.dat',
+            //        icu_data_in: '../../deps/icu/source/data/in\\icudt54l.dat',
+            //        icu_endianness: 'l',
+            //        icu_gyp_path: 'tools/icu/icu-generic.gyp',
+            //        icu_locales: 'en,root',
+            //        icu_path: 'deps\\icu',
+            //        icu_small: true,
+            //        icu_ver_major: '54',
+            //        node_install_npm: true,
+            //        node_prefix: '',
+            //        node_shared_cares: false,
+            //        node_shared_http_parser: false,
+            //        node_shared_libuv: false,
+            //        node_shared_openssl: false,
+            //        node_shared_v8: false,
+            //        node_shared_zlib: false,
+            //        node_tag: '',
+            //        node_use_dtrace: false,
+            //        node_use_etw: true,
+            //        node_use_mdb: false,
+            //        node_use_openssl: true,
+            //        node_use_perfctr: true,
+            //        openssl_no_asm: 0,
+            //        python: 'C:\\Python27\\python.exe',
+            //        target_arch: 'x64',
+            //        uv_library: 'static_library',
+            //        v8_enable_gdbjit: 0,
+            //        v8_enable_i18n_support: 1,
+            //        v8_no_strict_aliasing: 1,
+            //        v8_optimized_debug: 0,
+            //        v8_random_seed: 0,
+            //        v8_use_snapshot: false,
+            //        visibility: '',
+            //        want_separate_host_toolset: 0 } }
+    
+    process.pid
+        获得当前进程的pid：
+        console.log(process.pid);
+
+
+    process.kill(pid, [signal])
+        结束对应某pid的进程并发送一个信号（若没定义信号值则默认为'SIGTERM'）：
+        process.kill(process.pid, 'SIGTERM');
+
+
+    process.title
+        获取或设置当前进程的标题名称：
+        console.log(process.title);
+        // 管理员: E:\Program Files\WebStorm 9.0.1\lib\libpty\win\x86\winpty-agent.exe - node  title
+        process.title = 'new title!!!';
+        console.log(process.title); //new title!!!
+
+    process.arch
+        返回当前CPU的架构（'arm'、'ia32' 或者 'x64'）：
+        console.log(process.arch); //x64
+
+
+    process.platform
+        返回当前平台类型（'darwin', 'freebsd', 'linux', 'sunos' 或者 'win32'）：
+        console.log(process.platform); //win32
+
+    process.memoryUsage()
+        返回一个对象，它描述了Node进程的内存使用情况，其单位是bytes：
+        console.log(process.memoryUsage()); //{ rss: 16875520, heapTotal: 9751808, heapUsed: 3997040 }
+
+    process.nextTick(callback)
+        算是 process 对象最重要的一个属性方法了，表示在事件循环（EventLoop）的下一次循环中调用 callback 回调函数。
+        要注意的是它总会在I/O操作（比如查询数据）之前先执行。
+        示例：
+            //console.log('开始');process.nextTick(function() {console.log('nextTick 回调');});setTimeout(function(){console.log('新的EventLoop!')}, 2000);console.log('当前EventLoop');
+            console.log('开始');
+            process.nextTick(function() {
+                console.log('nextTick 回调');
+            });
+            setTimeout(function(){
+                console.log('新的EventLoop!')
+                }, 2000);
+            console.log('当前EventLoop');
+            // 输出:
+            // 当前EventLoop
+            // nextTick 回调
+            // 新的EventLoop!
+            
+        很多情况下都容易把它和 setImmediate 概念混淆，可以在这里看下它们的区别。
+        setImmediate和process.nextTick都会在下一个 event loop 时执行，但是它们有如下区别：
+            setImmediate不会call stack，可以用于大规模异步递归调用。而process.nextTick受到 maxTickDepth（默认为1000） 的限制，超过其数值会出错。
+            setImmediate(handler) 并不像 setTimeout(handler, 0) 由event loop检测系统时间是否到点然后向事件队列插入一个事件，然后调用事件的回调方法handler。而是监控UI线程的调用栈，一旦调用栈为空则将handler压栈。
+            setImmediate可视为“排队等候的人”，而 process.nextTick 是“插队的人”
+
+    process.umask([mask])
+        设置或者读取进程的文件模式的创建掩码（屏蔽字）。子进程从父进程中继承这个掩码。如果设定了参数 mask 那么返回旧的掩码，否则返回当前的掩码：
+        复制代码
+        var newmask = 77,
+        oldmask = process.umask(newmask);
+        console.log('原掩码: ' + oldmask.toString(8) + '\n' +
+        '新掩码: ' + newmask.toString(8));
+        //原掩码: 0
+        //新掩码: 115
+
+    process.uptime()
+        返回 Node 程序已运行的秒数：
+
+        复制代码
+        console.log('初始时间是：' + process.uptime());
+        var arr = new Array(10000000);
+        var s = arr.join(',');
+        console.log('处理数组后的时间是：' + process.uptime());
+
+        //初始时间是：0.436
+        //处理数组后的时间是：1.068
+
+    process.hrtime()
+        返回当前的高分辨时间，形式为 [秒，纳秒] 的元组数组。它是相对于在过去的任意时间。
+        该值与日期无关，因此不受时钟漂移的影响。主要用途是可以通过精确的时间间隔，来衡量程序的性能。示例：
+
+        复制代码
+        var t1 = process.hrtime();
+
+        var arr = new Array(40000000),
+            s = arr.join(',');
+
+        var t2 = process.hrtime();
+        console.log('处理数组共花费了%d秒，详细为%d纳秒', (t2[0] - t1[0]), (t2[1] - t1[1]));
+
+        //处理数组共花费了2秒，详细为227005133纳秒
+
+下面介绍的几个方法均为*nix系统（POSIX标准的系统平台）下独有的，win下不存在。
+    process.getgid()
+        获取进程的群组标识。获取到的是群组的数字ID，不是群组名称。
+        if (process.getgid) {
+            console.log('当前 gid: ' + process.getgid());
+        }
+
+    process.setgid(id)
+        设置进程的群组标识。参数可以是一个数字ID或者群组名字符串。如果指定了一个群组名，这个方法会阻塞等待将群组名解析为数字ID。
+
+        复制代码
+        if (process.getgid && process.setgid) {
+            console.log('当前 gid: ' + process.getgid());
+            try {
+                process.setgid(501);
+                console.log('新 gid: ' + process.getgid());
+            }
+            catch (err) {
+                console.log('设置 gid 失败: ' + err);
+            }
+        }
+
+    process.getuid()
+        获取执行进程的用户ID（详见getgid(2)）。这是用户的数字ID，不是用户名。
+        if (process.getuid) {
+            console.log('当前 uid: ' + process.getuid());
+        }
+
+
+    process.setuid(id)
+        设置执行进程的用户ID。参数可以使一个数字ID或者用户名字符串。如果指定了一个用户名，那么该方法会阻塞等待将用户名解析为数字ID。
+        if (process.getuid && process.setuid) {
+            console.log('当前 uid: ' + process.getuid());
+            try {
+                process.setuid(501);
+                console.log('新 uid: ' + process.getuid());
+            }
+            catch (err) {
+                console.log('设置 uid 失败: ' + err);
+            }
+        }
+
+
+    process.getgroups()
+        返回一个保存补充组ID(supplementary group ID)的数组。
+        if (process.getgroups) {
+            console.log('supplementary group ID: \n' );
+            process.getgroups().forEach(function(g){
+                console.log(g)
+            })
+        }
+
+    process.setgroups(groups)
+    
+    设置补充分组(supplementary group)的ID标识. 这是一个特殊的操作, 意味着你必须拥有root或者CAP_SETGID权限才可以。
+        if(process.setgroups){
+            gid = [ 27, 30, 46, 1000 ];
+            process.setgroups(gid);
+            console.log(process.getgroups());
+        }
+
+    process.initgroups(user, extra_group)
+        读取 /etc/group 并且初始化group分组访问列表，使用改成员所在的所有分组， 这是一个特殊的操作, 意味着你必须拥有root或者CAP_SETGID权限才可以。
+        参数 user 是一个用户名或者用户ID，而 extra_group 是分组的组名或者分组ID。
+        console.log(process.getgroups());         // [ 0 ]
+        process.initgroups('bnoordhuis', 1000);   // switch user
+        console.log(process.getgroups());         // [ 27, 30, 46, 1000, 0 ]
+        process.setgid(1000);                     // drop root gid
+        console.log(process.getgroups());         // [ 27, 30, 46, 1000 ]
